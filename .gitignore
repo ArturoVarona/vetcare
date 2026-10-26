@@ -1,2 +1,14 @@
+
+# Maven
 target/
+
+# Configuración del editor
 .vscode/
+
+# Variables de entorno y credenciales
+.env
+.env.*
+!.env.example
+
+# Archivos locales de configuración
+application-local.properties
