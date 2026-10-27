@@ -1,18 +1,16 @@
-## Getting Started
+# VetCare
+Sistema de escritorio desarrollado en Java y JavaFX para la gestión integral de una clínica veterinaria, utilizando PostgreSQL en Supabase como base de datos y Supabase Auth para la autenticación.
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+## Requisitos
+- JDK (versión indicada por el curso) y Maven
+- Proyecto en Supabase con los scripts de la carpeta `/database` ejecutados (`01_schema.sql` y `02_seed.sql`)
 
-## Folder Structure
+## Instalación y Configuración
+1. Clonar el repositorio.
+2. Configurar las credenciales de conexión a la base de datos y las llaves de Supabase en tus archivos de configuración o variables de entorno.
+3. Asegurarte de tener la estructura de directorios y dependencias correctas gestionadas mediante Maven.
 
-The workspace contains two folders by default, where:
-
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
-
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
-
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
-
-## Dependency Management
-
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+## Ejecución
+Puedes compilar y ejecutar la aplicación de escritorio ejecutando el siguiente comando en la terminal:
+```bash
+mvn clean javafx:run
