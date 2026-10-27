@@ -4,7 +4,6 @@ import io.github.cdimascio.dotenv.Dotenv;
 
 public final class AppConfig {
 
-    // Busca primero en variables de entorno del sistema y luego en el .env
     private static final Dotenv DOTENV = Dotenv.configure()
             .ignoreIfMissing()
             .load();
@@ -13,16 +12,24 @@ public final class AppConfig {
     }
 
     public static String get(String key) {
-        return DOTENV.get(key);
+        String value = System.getenv(
+                key.toUpperCase().replace('.', '_'));
+
+        if (value == null || value.isBlank()) {
+            value = DOTENV.get(key);
+        }
+
+        return value;
     }
 
     public static String require(String key) {
-        String value = DOTENV.get(key);
+        String value = get(key);
+
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
-                    "Falta la variable de configuracion: " + key
-                    + " (revisa tu archivo .env)");
+                    "Falta la variable de configuracion: " + key);
         }
+
         return value;
     }
 }
