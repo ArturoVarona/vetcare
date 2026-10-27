@@ -9,9 +9,9 @@ public final class DatabaseConnection {
     private final Connection connection;
 
     private DatabaseConnection() throws SQLException {   // constructor privado: nadie hace "new"
-        String url = AppConfig.get("db.url");            // cadena de Supabase
-        String user = AppConfig.get("db.user");
-        String password = AppConfig.get("db.password");
+            String url = AppConfig.require("DB_URL");
+            String user = AppConfig.require("DB_USER");
+            String password = AppConfig.require("DB_PASSWORD");
         this.connection = DriverManager.getConnection(url, user, password);
     }
 

@@ -1,4 +1,3 @@
-
 package com.vetcare;
 
 import java.sql.Connection;
@@ -16,12 +15,9 @@ class DatabaseConnectionTest {
 
     @Test
     void debeConectarseASupabase() throws Exception {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            assertNotNull(connection, "La conexión no debe ser nula");
-            assertFalse(connection.isClosed(), "La conexión debe estar abierta");
-            assertTrue(connection.isValid(5), "La conexión debe ser válida");
-
-            System.out.println("Conexion con Supabase exitosa.");
-        }
+        Connection connection = DatabaseConnection.getInstance().getConnection();
+        assertNotNull(connection, "La conexión no debe ser nula");
+        assertFalse(connection.isClosed(), "La conexión debe estar abierta");
+        assertTrue(connection.isValid(5), "La conexión debe ser válida");
     }
 }
