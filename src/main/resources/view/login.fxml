@@ -1,0 +1,8 @@
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="pa.vetcare.ui.LoginController"
+      spacing="10" alignment="CENTER" styleClass="login">
+    <Label text="Iniciar sesión" styleClass="title"/>
+    <TextField fx:id="txtUsername" promptText="Usuario"/>
+    <PasswordField fx:id="txtPassword" promptText="Contraseña" onAction="#onLogin"/>
+    <Button text="Entrar" defaultButton="true" onAction="#onLogin"/>
+    <Label fx:id="lblError" styleClass="error"/>
+</VBox>

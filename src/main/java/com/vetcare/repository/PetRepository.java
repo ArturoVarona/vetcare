@@ -6,12 +6,10 @@ import java.util.Optional;
 import com.vetcare.domain.Pet;
 
 public interface PetRepository {
-    
     Pet save(Pet pet);
-    Optional<Pet> findById(int  id);
+    Optional<Pet> findById(long id);
+    List<Pet> findByOwnerId(long ownerId);
     List<Pet> findByName(String name);
-    List<Pet> findByClientId(int clientId);
     void update(Pet pet);
-    void deleteById(int id);
-
+    void deleteById(long id);
 }

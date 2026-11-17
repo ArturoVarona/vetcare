@@ -1,6 +1,5 @@
 package com.vetcare.repository.jdbc;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,34 +10,37 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.vetcare.config.DatabaseConnection;
 import com.vetcare.domain.Pet;
+import com.vetcare.domain.Species;
 import com.vetcare.exception.DataAccessException;
 import com.vetcare.repository.PetRepository;
 
 public class JdbcPetRepository implements PetRepository {
 
     private static final Logger LOGGER = Logger.getLogger(JdbcPetRepository.class.getName());
-    private final Connection connection;
+    private static final String COLUMNS = "id, owner_id, name, species, breed, birth_date";
 
-    public JdbcPetRepository(Connection connection) {
-        this.connection = connection;
+    private final DatabaseConnection db;
+
+    public JdbcPetRepository(DatabaseConnection db) {
+        this.db = db;
     }
 
     @Override
     public Pet save(Pet pet) {
-        String sql = "INSERT INTO pet (client_id, name, species, breed, birth_date) "
+        String sql = "INSERT INTO pets (owner_id, name, species, breed, birth_date) "
                    + "VALUES (?, ?, ?, ?, ?) RETURNING id";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, pet.getClientId());
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setLong(1, pet.getOwnerId());
             ps.setString(2, pet.getName());
-            ps.setString(3, pet.getSpecies());
+            ps.setString(3, pet.getSpecies().name());
             ps.setString(4, pet.getBreed());
             ps.setObject(5, pet.getBirthDate());
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                // Pet no tiene setId: devolvemos una mascota nueva con el id generado
-                return new Pet(rs.getInt("id"), pet.getClientId(), pet.getName(),
-                        pet.getSpecies(), pet.getBreed(), pet.getBirthDate());
+                pet.setId(rs.getLong("id"));
+                return pet;
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error al guardar la mascota " + pet.getName(), e);
@@ -47,10 +49,66 @@ public class JdbcPetRepository implements PetRepository {
     }
 
     @Override
-    public List<Pet> findByClientId(int clientId) {
-        String sql = "SELECT * FROM pet WHERE client_id = ? ORDER BY name";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, clientId);
+    public Optional<Pet> findById(long id) {
+        String sql = "SELECT " + COLUMNS + " FROM pets WHERE id = ?";
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(mapRow(rs)) : Optional.empty();
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al buscar la mascota " + id, e);
+            throw new DataAccessException("No se pudo consultar la mascota", e);
+        }
+    }
+
+    @Override
+    public List<Pet> findByOwnerId(long ownerId) {
+        return query("SELECT " + COLUMNS + " FROM pets WHERE owner_id = ? ORDER BY name",
+                ps -> ps.setLong(1, ownerId));
+    }
+
+    @Override
+    public List<Pet> findByName(String name) {
+        return query("SELECT " + COLUMNS + " FROM pets WHERE name ILIKE ? ORDER BY name",
+                ps -> ps.setString(1, "%" + name + "%"));
+    }
+
+    @Override
+    public void update(Pet pet) {
+        String sql = "UPDATE pets SET owner_id = ?, name = ?, species = ?, breed = ?, "
+                   + "birth_date = ? WHERE id = ?";
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setLong(1, pet.getOwnerId());
+            ps.setString(2, pet.getName());
+            ps.setString(3, pet.getSpecies().name());
+            ps.setString(4, pet.getBreed());
+            ps.setObject(5, pet.getBirthDate());
+            ps.setLong(6, pet.getId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al actualizar la mascota " + pet.getId(), e);
+            throw new DataAccessException("No se pudo actualizar la mascota", e);
+        }
+    }
+
+    @Override
+    public void deleteById(long id) {
+        String sql = "DELETE FROM pets WHERE id = ?";
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error al eliminar la mascota " + id, e);
+            throw new DataAccessException("No se pudo eliminar la mascota", e);
+        }
+    }
+
+    private interface Binder { void bind(PreparedStatement ps) throws SQLException; }
+
+    private List<Pet> query(String sql, Binder binder) {
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            binder.bind(ps);
             List<Pet> result = new ArrayList<>();
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -59,35 +117,18 @@ public class JdbcPetRepository implements PetRepository {
             }
             return result;
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error al listar mascotas del cliente " + clientId, e);
+            LOGGER.log(Level.SEVERE, "Error al consultar mascotas", e);
             throw new DataAccessException("No se pudo consultar las mascotas", e);
         }
     }
 
-    // findById, findByName, update, deleteById
-    @Override
-    public Optional<Pet> findById(int id) {
-        throw new UnsupportedOperationException("Pendiente");
-    }
-
-    @Override
-    public List<Pet> findByName(String name) {
-        throw new UnsupportedOperationException("Pendiente");
-    }
-
-    @Override
-    public void update(Pet pet) {
-        throw new UnsupportedOperationException("Pendiente");
-    }
-
-    @Override
-    public void deleteById(int id) {
-        throw new UnsupportedOperationException("Pendiente");
-    }
-
     private Pet mapRow(ResultSet rs) throws SQLException {
-        return new Pet(rs.getInt("id"), rs.getInt("client_id"), rs.getString("name"),
-                rs.getString("species"), rs.getString("breed"),
+        return new Pet(
+                rs.getLong("id"),
+                rs.getLong("owner_id"),
+                rs.getString("name"),
+                Species.valueOf(rs.getString("species")),
+                rs.getString("breed"),
                 rs.getObject("birth_date", LocalDate.class));
     }
 }

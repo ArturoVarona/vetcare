@@ -4,6 +4,9 @@ target/
 
 # Configuración del editor
 .vscode/
+.idea/
+*.iml
+out/
 
 # Variables de entorno y credenciales
 .env
@@ -12,3 +15,7 @@ target/
 
 # Archivos locales de configuración
 application-local.properties
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
