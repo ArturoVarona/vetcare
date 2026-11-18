@@ -29,8 +29,7 @@ public class SupabaseAuthService {
                 + "\",\"password\":\"" + escaparJson(password) + "\"}";
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url
-                        + "/auth/v1/token?grant_type=password"))
+                .uri(URI.create(url + "/auth/v1/token?grant_type=password"))
                 .timeout(Duration.ofSeconds(20))
                 .header("apikey", apiKey)
                 .header("Content-Type", "application/json")
