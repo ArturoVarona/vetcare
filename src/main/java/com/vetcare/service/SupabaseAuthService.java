@@ -1,58 +1,72 @@
 package com.vetcare.service;
 
-
+import com.vetcare.config.AppConfig;
+import com.vetcare.exception.AuthenticationException;
+import com.vetcare.exception.DataAccessException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class SupabaseAuthService {
-     private final HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
+public class SupabaseAuthService implements AuthClient {
+
+    private static final Logger LOGGER = Logger.getLogger(SupabaseAuthService.class.getName());
+    private static final Pattern USER_ID =
+            Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F\\-]{36})\"");
+
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    public int iniciarSesion(String email, String password)
-            throws IOException, InterruptedException {
+    @Override
+    public UUID authenticate(String email, String password) {
+        String url = AppConfig.require("SUPABASE_URL") + "/auth/v1/token?grant_type=password";
+        String body = "{\"email\":\"" + escape(email) + "\",\"password\":\"" + escape(password) + "\"}";
 
-        String url = System.getenv("SUPABASE_URL");
-        String apiKey = System.getenv("SUPABASE_PUBLISHABLE_KEY");
-
-        if (url == null || apiKey == null) {
-            throw new IllegalStateException(
-                    "Falta configurar las variables de Supabase."
-            );
-        }
-
-        String json = "{\"email\":\"" + escaparJson(email)
-                + "\",\"password\":\"" + escaparJson(password) + "\"}";
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url + "/auth/v1/token?grant_type=password"))
-                .timeout(Duration.ofSeconds(20))
-                .header("apikey", apiKey)
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(15))
+                .header("apikey", AppConfig.require("SUPABASE_ANON_KEY"))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
-        HttpResponse<String> response = client.send(
-                request,
-                HttpResponse.BodyHandlers.ofString()
-        );
-
-       System.out.println("Código HTTP: " + response.statusCode());
-       System.out.println("Respuesta de Supabase: " + response.body());
-       
-       
-       return response.statusCode();
+        try {
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status == 400 || status == 401) {
+                throw new AuthenticationException("Credenciales inválidas");
+            }
+            if (status != 200) {
+                LOGGER.severe("Supabase Auth respondió con estado " + status);
+                throw new DataAccessException("No se pudo contactar el servicio de autenticación", null);
+            }
+            return extractUserId(response.body());
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            LOGGER.log(Level.SEVERE, "Error al contactar Supabase Auth", e);
+            throw new DataAccessException("No se pudo contactar el servicio de autenticación", e);
+        }
     }
 
-    private String escaparJson(String texto) {
-        return texto.replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t");
+    private UUID extractUserId(String json) {
+        int userStart = json.indexOf("\"user\"");
+        Matcher m = USER_ID.matcher(userStart >= 0 ? json.substring(userStart) : json);
+        if (!m.find()) {
+            throw new AuthenticationException("Respuesta de autenticación inválida");
+        }
+        return UUID.fromString(m.group(1));
+    }
+
+    private String escape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
