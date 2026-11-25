@@ -1,6 +1,9 @@
 package com.vetcare;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 import com.vetcare.config.DatabaseConnection;
 import com.vetcare.domain.Pet;
@@ -9,7 +12,6 @@ import com.vetcare.exception.EntityNotFound;
 import com.vetcare.repository.jdbc.JdbcOwnerRepository;
 import com.vetcare.repository.jdbc.JdbcPetRepository;
 import com.vetcare.service.PetService;
-import org.junit.jupiter.api.Test;
 
 class PetCrudTest {
 
